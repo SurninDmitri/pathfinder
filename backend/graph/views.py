@@ -1,16 +1,70 @@
-from django.shortcuts import render
-from django.http import JsonResponse
+from rest_framework.response import Response
+from rest_framework import status
+from .utils import BFS
+from rest_framework.decorators import api_view
+from .serializers import GraphSerializer, RunAlgoritm
+from .models import Graph
+from django.shortcuts import get_object_or_404
 
+@api_view(['GET'])
 def home_graph(request):
-    graf = {
-        'a': ['b', 'c'],
-        'b': ['c', 'f'],
-        'c': ['b', 'e'],
-        'f': ['e'],
-        'e': []
+    graph = {
+        'nodes': [
+            {'id': 'a', 'x': 0, 'y': 50, 'neighbors': {'b':1, 'c':1}},
+            {'id': 'b', 'x': 10, 'y': 20, 'neighbors': {'c':1, 'f':1}},
+            {'id': 'c', 'x': 0, 'y': 50, 'neighbors': {'e':1}},
+            {'id': 'f', 'x': 0, 'y': 50, 'neighbors': {'e':1}},
+            {'id': 'e', 'x': 0, 'y': 50, 'neighbors': {}},
+        ]
     }
+    steps = BFS(graph, 'a', 'e')
+    
     response = {
         "title": "Интерактивный визуализатор",
-        "graph": graf,
+        "steps": steps,
     }
-    return JsonResponse(response, status=200, json_dumps_params={'ensure_ascii': False})
+    return Response(response, status=status.HTTP_200_OK)
+
+@api_view(['GET', 'POST'])
+def graph_list(request):
+    if request.method == 'POST':
+        serializer = GraphSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    graphs = Graph.objects.all()
+    serializer = GraphSerializer(graphs, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET','PUT', 'PATCH', 'DELETE'])
+def graph_detail(request, pk:int):
+    graph = get_object_or_404(Graph, pk=pk)
+    if request.method == 'GET':
+        serializer = GraphSerializer(graph)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    elif request.method in ('PUT', 'PATCH'):
+        partial = request.method == 'PATCH'
+        serializer = GraphSerializer(graph, data=request.data, partial=partial)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        graph.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def graph_run(request, pk:int):
+    graph_model = get_object_or_404(Graph, pk=pk)
+    serializer = RunAlgoritm(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    start = serializer.validated_data['start']
+    end   = serializer.validated_data['end']
+    graph = graph_model.nodes
+    steps = BFS(graph, start, end)
+    return Response(steps, status=status.HTTP_200_OK)

@@ -1,14 +1,9 @@
 from collections import deque
 
-
 def decoder(json_object):
-    graf = {
-        'a': {'b':1, 'c':1},
-        'b': {'c':1,'f':1},
-        'c': {'b':1,'e':1},
-        'f': {'e':1},
-        'e': {}
-    }
+    graf = {}
+    for node in json_object:
+        graf[node['id']] = node['neighbors']
     return graf
 
 def getpath(parent, current_node, start):
@@ -52,6 +47,7 @@ def BFS(json_object, start, end):
                 parent[node] = current_node
                 path = getpath(parent, node, start)
 
+                step += 1
                 steps.append(
                     {
                         'step': step,
@@ -68,8 +64,4 @@ def BFS(json_object, start, end):
                 queue.append(node)
                 visited.append(node)
                 parent[node] = current_node
-    return False
-
-result = BFS(None,'a', 'e')
-for i in result:
-    print(i)
+    return steps

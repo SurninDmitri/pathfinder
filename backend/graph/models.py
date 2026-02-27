@@ -5,13 +5,14 @@ from django.db import models
 User = get_user_model()
 
 class Graph(models.Model):
-    graph_data = models.JSONField(
+    nodes = models.JSONField(
         default=dict,
         verbose_name="Данные графа"
     )
 
     author = models.ForeignKey(
         User,
+        null=True,
         related_name="graphs",
         verbose_name="Автор",
         on_delete=models.CASCADE
