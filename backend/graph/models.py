@@ -12,7 +12,6 @@ class Graph(models.Model):
 
     author = models.ForeignKey(
         User,
-        null=True,
         related_name="graphs",
         verbose_name="Автор",
         on_delete=models.CASCADE

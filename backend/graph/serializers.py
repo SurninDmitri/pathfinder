@@ -4,7 +4,8 @@ from .models import Graph
 class GraphSerializer(serializers.ModelSerializer):
     class Meta:
         model = Graph
-        fields = ('nodes',)
+        fields = ('nodes','author')
+        read_only_fields = ('author',)
 
 class RunAlgoritm(serializers.Serializer):
     start = serializers.CharField(required=True, allow_blank=False)

@@ -33,7 +33,7 @@ class GraphList(APIView):
     def post(self, request):
         serializer = GraphSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(author=self.request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -41,6 +41,9 @@ class GraphList(APIView):
 class GraphDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Graph.objects.all()
     serializer_class = GraphSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user) 
 
 @api_view(['GET'])
 def graph_run(request, pk:int):
