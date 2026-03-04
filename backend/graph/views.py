@@ -16,16 +16,19 @@ def home_graph(request):
             {'id': 'c', 'x': 0, 'y': 50, 'neighbors': {'e':1}},
             {'id': 'f', 'x': 0, 'y': 50, 'neighbors': {'e':1}},
             {'id': 'e', 'x': 0, 'y': 50, 'neighbors': {}},
-        ]
+        ],
+        'start_node':'a',
+        'end_node':'e',
+        'short_path':False
     }
-    steps = BFS(graph, 'a', 'e')
+    steps = BFS(graph['nodes'], graph['start_node'], graph['end_node'])
     
     response = {
         "steps": steps,
     }
     return Response(response, status=status.HTTP_200_OK)
 
-class GraphList(APIView):
+class GraphCreateList(APIView):
     def get(self, request):
         graphs = Graph.objects.all()
         serializer = GraphSerializer(graphs, many=True)
