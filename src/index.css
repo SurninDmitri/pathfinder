@@ -267,3 +267,24 @@ code {
     @apply font-sans;
   }
 }
+
+.needs-overlay {
+  position: relative;
+  overflow: hidden;
+}
+
+.needs-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.82);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.needs-overlay.active::after {
+  opacity: 1;
+  pointer-events: auto;
+}
