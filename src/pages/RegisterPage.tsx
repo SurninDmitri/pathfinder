@@ -21,36 +21,44 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/users/", {
+      // 1. Создаем аккаунт
+      const regRes = await fetch("/api/auth/users/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: login, // Djoser по умолчанию ждет username
-          password: password,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: login, password: password }),
       });
 
-      const data = await response.json();
+      if (!regRes.ok) {
+        const errorData = await regRes.json();
+        // Djoser обычно возвращает ошибки в виде массивов по полям
+        setError(errorData.username?.[0] || errorData.password?.[0] || "Ошибка регистрации");
+        setIsLoading(false);
+        return;
+      }
 
-      if (response.ok) {
-        alert("Регистрация прошла успешно!");
-        navigate("/login");
+      // 2. СРАЗУ запрашиваем токен, чтобы юзер не вводил данные второй раз
+      const authRes = await fetch("/api/auth/jwt/create/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: login, password: password }),
+      });
+
+      if (authRes.ok) {
+        const tokens = await authRes.json();
+        
+        // 3. Сохраняем всё необходимое
+        localStorage.setItem("access", tokens.access);
+        localStorage.setItem("refresh", tokens.refresh);
+        localStorage.setItem("username", login);
+        
+        // 4. Используем href для сброса состояния App.tsx
+        window.location.href = "/"; 
       } else {
-        // Обработка ошибок валидации (пароль короткий, юзер занят и т.д.)
-        if (data.username) {
-          setError(`Логин: ${data.username.join(" ")}`);
-        } else if (data.password) {
-          setError(`Пароль: ${data.password.join(" ")}`);
-        } else if (data.non_field_errors) {
-          setError(data.non_field_errors.join(" "));
-        } else {
-          setError("Ошибка регистрации. Попробуйте другой логин.");
-        }
+        // Если аккаунт создан, но токен не получен — шлем на логин
+        navigate("/login");
       }
     } catch (err) {
-      setError("Нет связи с сервером. Проверьте, запущен ли Docker.");
+      setError("Сервер недоступен. Проверьте соединение.");
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +81,7 @@ export default function RegisterPage() {
         <Button 
           variant="default" 
           size="lg" 
-          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0"
+          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0 h-10 px-4"
           onClick={() => navigate("/login")}
         >
           Войти
@@ -85,12 +93,11 @@ export default function RegisterPage() {
           <CardContent className="pt-10 pb-10 px-10">
             <div className="text-center mb-8">
               <h2 className="text-3xl font-semibold text-zinc-900 mb-2">
-                Создать аккаунт
+                Создание аккаунта
               </h2>
-              <p className="text-zinc-600">Придумайте логин и пароль</p>
+              <p className="text-zinc-600">Присоединяйтесь к PathFinder</p>
             </div>
 
-            {/* Блок для отображения ошибок */}
             {error && (
               <div className="mb-4 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
                 {error}
@@ -100,7 +107,7 @@ export default function RegisterPage() {
             <form onSubmit={handleRegister} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="login" className="text-zinc-700 font-medium">
-                  Придумайте логин:
+                  Логин
                 </Label>
                 <Input
                   id="login"
@@ -115,7 +122,7 @@ export default function RegisterPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-zinc-700 font-medium">
-                  Придумайте пароль:
+                  Пароль
                 </Label>
                 <div className="relative">
                   <Input
@@ -130,7 +137,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-700 transition-colors"
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
