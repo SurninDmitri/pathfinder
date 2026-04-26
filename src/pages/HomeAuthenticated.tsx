@@ -5,8 +5,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Play, Pause, User } from "lucide-react";
+import { Play, Pause } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Header } from "@/components/ui/Header"; 
+// 1. Импортируем модалку
+import { LoadGraphModal } from "@/components/ui/LoadGraphModal";
 
 export default function HomeAuthenticated() {
   const navigate = useNavigate();
@@ -18,52 +21,35 @@ export default function HomeAuthenticated() {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState("dijkstra");
   const [isShortestPath, setIsShortestPath] = useState(true);
   const [isStarted, setIsStarted] = useState(false);
+  
+  // 2. Стейт для модалки
+  const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
 
-  // Функции управления
   const handleStart = () => setIsStarted(true);
   const handlePause = () => setIsStarted(false);
 
- const handleLogout = () => {
-  // 1. Очищаем все следы пребывания
-  localStorage.removeItem("access");
-  localStorage.removeItem("refresh");
-  localStorage.removeItem("username");
-  window.location.href = "/"; 
-};
+  const handleLogout = () => {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    localStorage.removeItem("username");
+    window.location.href = "/"; 
+  };
+
+  // 3. Функция выбора графа из модалки
+  const handleGraphSelect = (graph: any) => {
+    console.log("Выбран граф для загрузки:", graph);
+    setIsLoadModalOpen(false);
+    // Тут в будущем добавим логику отрисовки на канвас
+  };
 
   return (
     <div className="fixed inset-0 bg-zinc-50 flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="h-16 border-b border-zinc-200 bg-white px-8 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2 -ml-4">
-          <img src="/graph.svg" alt="PathFinder" className="w-12 h-12 object-contain" />
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">PathFinder</h1>
-        </div>
-
-        {/* Блок кнопок в шапке */}
-        <div className={`flex items-center gap-3 needs-overlay relative overflow-hidden ${isStarted ? 'active' : ''}`}>
-          
-          {/* Синяя кнопка с именем пользователя */}
-          <Button 
-            variant="default" 
-            size="lg" 
-            className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0 h-10 px-4 shadow-sm"
-          >
-            <User className="w-5 h-5" />
-            {username}
-          </Button>
-
-          {/* Красная кнопка выхода */}
-          <Button 
-            variant="destructive" 
-            size="lg" 
-            className="bg-red-600 hover:bg-red-700 text-white border-0 h-10 px-4 shadow-sm"
-            onClick={handleLogout}
-          >
-            Выйти
-          </Button>
-        </div>
-      </header>
+      
+      <Header 
+        isStarted={isStarted} 
+        username={username} 
+        handleLogout={handleLogout} 
+      />
 
       <div className="flex flex-1 overflow-hidden">
         
@@ -98,7 +84,6 @@ export default function HomeAuthenticated() {
             </CardContent>
           </Card>
 
-          {/* Кнопки создания и загрузки — обе СИНИЕ */}
           <div className={`needs-overlay relative overflow-hidden ${isStarted ? 'active' : ''}`}>
             <div className="mt-6 flex-shrink-0 flex gap-3">
                 <Button
@@ -109,9 +94,11 @@ export default function HomeAuthenticated() {
                   Создать граф
                 </Button>
 
+                {/* 4. Вешаем открытие модалки на кнопку */}
                 <Button
                   size="lg"
                   className="flex-1 py-7 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                  onClick={() => setIsLoadModalOpen(true)}
                 >
                   Загрузить свой граф
                 </Button>
@@ -122,11 +109,11 @@ export default function HomeAuthenticated() {
         {/* Правая панель */}
         <div className="w-96 border-l border-zinc-200 bg-white p-8 overflow-y-auto flex-shrink-0">
           <div className="space-y-8">
-            
             <div className={`needs-overlay relative overflow-hidden ${isStarted ? 'active' : ''}`}>
               <div>
                 <h2 className="text-xl font-semibold text-zinc-900 mb-4">Выберите алгоритм</h2>
                 <RadioGroup value={selectedAlgorithm} onValueChange={setSelectedAlgorithm} className="space-y-5">
+                  {/* ... (радио-кнопки без изменений) ... */}
                   <div className="flex items-center space-x-4">
                     <RadioGroupItem value="dijkstra" id="dijkstra" className="w-6 h-6 border-zinc-400 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600" />
                     <Label htmlFor="dijkstra" className="cursor-pointer text-lg font-medium text-zinc-800">Дейкстры</Label>
@@ -144,6 +131,7 @@ export default function HomeAuthenticated() {
             </div>
 
             <Separator />
+            {/* ... (остальной UI без изменений) ... */}
             <div className={`needs-overlay relative overflow-hidden ${isStarted ? 'active' : ''}`}>
               <div className="flex items-center space-x-4 pt-2">
                 <Checkbox id="shortest" checked={isShortestPath} onCheckedChange={(checked) => setIsShortestPath(!!checked)} className="w-6 h-6 border-zinc-400 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600" />
@@ -152,29 +140,16 @@ export default function HomeAuthenticated() {
             </div>
             <Separator />
 
-            {/* Кнопка Старт / Паузы */}
             {isStarted ? (
-              <Button
-                size="lg"
-                variant="default"
-                className="w-full gap-3 py-7 text-lg shadow-sm"
-                onClick={handlePause}
-              >
-                <Pause className="w-6 h-6" />
-                Пауза
+              <Button size="lg" variant="default" className="w-full gap-3 py-7 text-lg shadow-sm" onClick={handlePause}>
+                <Pause className="w-6 h-6" /> Пауза
               </Button>
             ) : (
-              <Button
-                size="lg"
-                className="w-full gap-3 bg-emerald-600 hover:bg-emerald-700 text-white py-7 text-lg shadow-sm"
-                onClick={handleStart}
-              >
-                <Play className="w-6 h-6" />
-                Старт
+              <Button size="lg" className="w-full gap-3 bg-emerald-600 hover:bg-emerald-700 text-white py-7 text-lg shadow-sm" onClick={handleStart}>
+                <Play className="w-6 h-6" /> Старт
               </Button>
             )}
 
-            {/* Старт и Финиш вершины */}
             <div className={`needs-overlay relative overflow-hidden ${isStarted ? 'active' : ''}`}>
               <div className="pt-6 space-y-10">
                 <div className="flex items-center gap-4">
@@ -202,10 +177,16 @@ export default function HomeAuthenticated() {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>
+
+      {/* 5. Добавляем саму модалку в конец компонента */}
+      <LoadGraphModal 
+        isOpen={isLoadModalOpen}
+        onClose={() => setIsLoadModalOpen(false)}
+        onSelect={handleGraphSelect}
+      />
     </div>
   );
 }
