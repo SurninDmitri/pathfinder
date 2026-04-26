@@ -166,7 +166,7 @@ export default function HomeAuthenticated() {
 
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-full bg-purple-100 border-4 border-purple-500 flex items-center justify-center overflow-hidden shadow-sm">
+                    <div className="   rounded-full bg-purple-100 border-4 border-purple-500 flex items-center justify-center overflow-hidden shadow-sm">
                       <input type="text" value={finishVertex} onChange={(e) => setFinishVertex(e.target.value.toUpperCase())} maxLength={1} className="w-12 h-12 text-center text-3xl font-bold bg-transparent focus:outline-none text-purple-700 placeholder-purple-400" />
                     </div>
                   </div>
