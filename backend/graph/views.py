@@ -7,6 +7,9 @@ from .serializers import GraphSerializer, RunAlgoritm
 from .models import Graph
 from django.shortcuts import get_object_or_404
 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+
 @api_view(['GET'])
 def home_graph(request):
     graph = {
@@ -29,6 +32,11 @@ def home_graph(request):
     return Response(response, status=status.HTTP_200_OK)
 
 class GraphCreateList(APIView):
+    permission_classes = [IsAuthenticated]
+        
+    # 2. Указываем способ аутентификации (если не настроено глобально в settings.py)
+    authentication_classes = [JWTAuthentication]
+
     def get(self, request):
         graphs = Graph.objects.all()
         serializer = GraphSerializer(graphs, many=True)
