@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.validators import MinValueValidator, MaxValueValidator
 from .models import Graph
-from rest_framework.validators import UniqueTogetherValidator
+
 
 
 
@@ -23,10 +23,11 @@ class NodeSerializer(serializers.Serializer):
 
 class GraphSerializer(serializers.ModelSerializer):
     nodes = serializers.ListField(child=NodeSerializer(), required=True)
+    name = serializers.CharField(required=True)
 
     class Meta:
         model = Graph
-        fields = ('nodes',)
+        fields = ('id','name','nodes',)
         
     def validate(self, graf):
         nodes = graf['nodes']

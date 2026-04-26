@@ -1,6 +1,9 @@
+from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status, generics
+
+from .permissions import IsOnlyAuthor
 from .utils import BFS
 from rest_framework.decorators import api_view
 from .serializers import GraphSerializer, RunAlgoritm
@@ -34,11 +37,10 @@ def home_graph(request):
 class GraphCreateList(APIView):
     permission_classes = [IsAuthenticated]
         
-    # 2. Указываем способ аутентификации (если не настроено глобально в settings.py)
     authentication_classes = [JWTAuthentication]
 
     def get(self, request):
-        graphs = Graph.objects.all()
+        graphs = Graph.objects.filter(author=request.user)
         serializer = GraphSerializer(graphs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     def post(self, request):
@@ -52,9 +54,9 @@ class GraphCreateList(APIView):
 class GraphDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Graph.objects.all()
     serializer_class = GraphSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated, IsOnlyAuthor]
 
-    def perform_create(self, serializer):
-        serializer.save(author=self.request.user) 
 
 @api_view(['GET'])
 def graph_run(request, pk:int):

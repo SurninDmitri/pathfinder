@@ -5,6 +5,7 @@ from django.db import models
 User = get_user_model()
 
 class Graph(models.Model):
+    name = models.CharField(max_length=24)
     nodes = models.JSONField(
         default=dict,
         verbose_name="Данные графа"
