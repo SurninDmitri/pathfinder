@@ -1,0 +1,88 @@
+# region ==========Production=====================================================
+
+# volumes:
+#   pg_data:
+#   static_django:
+#   frontend_static:
+
+# services:
+#   db:
+#     image: postgres:15
+#     restart: always
+#     env_file: .env
+#     volumes:
+#       - pg_data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+#       interval: 5s
+#       timeout: 5s
+#       retries: 5
+
+#   backend:
+#     build: ./backend/
+#     restart: always
+#     env_file: .env
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#     volumes:
+#       - static_django:/app/backend_static/
+#     command: >
+#       sh -c "python manage.py migrate &&
+#              python manage.py collectstatic --no-input &&
+#              python manage.py runserver 0.0.0.0:8000"
+
+#   frontend:
+#     build: ./frontend/
+#     volumes:
+#       - frontend_static:/frontend_static # Сюда положим билд фронта
+
+#   gateway:
+#     build: ./gateway/ # Твой Dockerfile с nginx:1.22.1
+#     restart: always
+#     ports:
+#       - "80:80"
+#     volumes:
+#       - frontend_static:/usr/share/nginx/html:ro # Забираем билд фронта
+#       - static_django:/app/backend_static/:ro    # Забираем статику админки
+#     depends_on:
+#       - backend
+#       - frontend
+
+# endregion ======================================================================
+
+
+# region ==========Developer======================================================
+
+volumes:
+  pg_data:
+  # static_django больше не нужен для томов Nginx, 
+  # но оставим его, если ты хочешь хранить статику локально
+
+services:
+  db:
+    image: postgres:15
+    restart: always
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend/
+    restart: always
+    env_file: .env
+    ports:
+      - "8000:8000"  # КРИТИЧНО: чтобы твой локальный фронт достучался до API
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+# endregion ======================================================================

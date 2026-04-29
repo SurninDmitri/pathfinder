@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Logs
 logs
 *.log
@@ -22,3 +23,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+=======
+backend/.venv/
+.env
+Промт
+>>>>>>> 97b6d23af3de659ad7c154dd614fd454bb4a9aed
