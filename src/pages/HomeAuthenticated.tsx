@@ -1,29 +1,72 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/ui/Header"; 
-// 1. Импортируем модалку
 import { LoadGraphModal } from "@/components/ui/LoadGraphModal";
+// Импорт библиотеки графа
+import ForceGraph2D from "react-force-graph-2d";
 
 export default function HomeAuthenticated() {
   const navigate = useNavigate();
   const username = localStorage.getItem("username") || "Профиль";
 
-  // Состояния
+  // Состояния UI
   const [startVertex, setStartVertex] = useState("");
   const [finishVertex, setFinishVertex] = useState("");
   const [selectedAlgorithm, setSelectedAlgorithm] = useState("dijkstra");
   const [isShortestPath, setIsShortestPath] = useState(true);
   const [isStarted, setIsStarted] = useState(false);
-  
-  // 2. Стейт для модалки
   const [isLoadModalOpen, setIsLoadModalOpen] = useState(false);
+
+  // Состояние данных графа
+  const [currentGraph, setCurrentGraph] = useState<any>(null);
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+
+  // Автоматическое изменение размера графа при ресайзе окна
+  useEffect(() => {
+    const updateDimensions = () => {
+      setDimensions({
+        width: window.innerWidth - 420, // Ширина минус правая панель и отступы
+        height: window.innerHeight - 180, // Высота минус хедер и отступы
+      });
+    };
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, []);
+
+  // ТРАНСФОРМАЦИЯ ДАННЫХ ИЗ БД ДЛЯ ВИЗУАЛИЗАЦИИ
+  const graphData = useMemo(() => {
+    if (!currentGraph || !currentGraph.nodes) return { nodes: [], links: [] };
+
+    const links: any[] = [];
+    currentGraph.nodes.forEach((node: any) => {
+      if (node.neighbors) {
+        Object.entries(node.neighbors).forEach(([targetId, weight]) => {
+          // Проверяем, есть ли обратная связь для кривизны (чтобы стрелки не перекрывались)
+          const hasReverse = currentGraph.nodes.find((n: any) => n.id === targetId)?.neighbors?.[node.id];
+          
+          links.push({
+            source: node.id,
+            target: targetId,
+            label: String(weight),
+            curvature: hasReverse ? 0.2 : 0,
+          });
+        });
+      }
+    });
+
+    return {
+      nodes: currentGraph.nodes.map((n: any) => ({ id: n.id })),
+      links: links,
+    };
+  }, [currentGraph]);
 
   const handleStart = () => setIsStarted(true);
   const handlePause = () => setIsStarted(false);
@@ -35,11 +78,9 @@ export default function HomeAuthenticated() {
     window.location.href = "/"; 
   };
 
-  // 3. Функция выбора графа из модалки
   const handleGraphSelect = (graph: any) => {
-    console.log("Выбран граф для загрузки:", graph);
+    setCurrentGraph(graph); // Устанавливаем полученный объект из БД
     setIsLoadModalOpen(false);
-    // Тут в будущем добавим логику отрисовки на канвас
   };
 
   return (
@@ -58,29 +99,63 @@ export default function HomeAuthenticated() {
           <Card className="flex-1 shadow-sm border border-zinc-200 overflow-hidden flex flex-col">
             <CardHeader className="pb-4 border-b bg-white">
                 <div className="flex items-center justify-between w-full">
-                    <div className="flex-1"></div>
-                    <CardTitle className="text-xl text-zinc-800 font-semibold">
-                      Граф
+                    <div className="flex-1 text-sm text-zinc-400 font-medium">
+                    </div>
+                    <CardTitle className="flex-1 text-xl text-zinc-800 font-semibold text-center">
+                      {currentGraph?.name ? `${currentGraph.name}` : ""}
                     </CardTitle>
                     <div className={`needs-overlay relative overflow-hidden ${isStarted ? 'active' : ''} flex-1 flex justify-end`}>
                       <Button
                         variant="outline"
-                        size="lg"
-                        className="bg-orange-200 text-zinc-800 border-0 hover:bg-orange-300 hover:text-zinc-900 shadow-sm"
-                        onClick={() => navigate("/create")}
+                        size="sm"
+                        className="bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200 shadow-none h-9"
+                        onClick={() => navigate("/create", { state: { graphData: currentGraph } })}
                       >
                         Редактировать
                       </Button>
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className="flex-1 p-0 bg-white flex items-center justify-center overflow-hidden">
-              <div className="text-center">
-                <div className="w-28 h-28 mx-auto mb-6 rounded-3xl bg-zinc-100 flex items-center justify-center">
-                  <span className="text-6xl opacity-40">📊</span>
+            <CardContent className="flex-1 p-0 bg-white relative flex items-center justify-center overflow-hidden">
+              {currentGraph ? (
+                <ForceGraph2D
+                  graphData={graphData}
+                  nodeLabel="id"
+                  width={dimensions.width}
+                  height={dimensions.height}
+                  linkDirectionalArrowLength={6}
+                  linkDirectionalArrowRelPos={1}
+                  linkCurvature="curvature"
+                  linkLabel="label"
+                  nodeCanvasObject={(node: any, ctx, globalScale) => {
+                    const label = node.id;
+                    const fontSize = 12 / globalScale;
+                    const radius = 12;
+
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = "#f4f4f5"; // zinc-100
+                    ctx.fill();
+
+                    ctx.lineWidth = 2 / globalScale;
+                    ctx.strokeStyle = "#d4d4d8"; // zinc-300
+                    ctx.stroke();
+
+                    ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#18181b"; // zinc-900
+                    ctx.fillText(label, node.x, node.y);
+                  }}
+                />
+              ) : (
+                <div className="text-center">
+                  <div className="w-28 h-28 mx-auto mb-6 rounded-3xl bg-zinc-100 flex items-center justify-center">
+                    <span className="text-6xl opacity-40">📊</span>
+                  </div>
+                  <p className="text-zinc-600 text-2xl font-medium">Загрузите или создайте граф</p>
                 </div>
-                <p className="text-zinc-600 text-2xl font-medium">Здесь будет интерактивный граф</p>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -88,19 +163,18 @@ export default function HomeAuthenticated() {
             <div className="mt-6 flex-shrink-0 flex gap-3">
                 <Button
                   size="lg"
-                  className="flex-1 py-7 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                  className="flex-1 py-7 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm border-0"
                   onClick={() => navigate("/create")}
                 >
                   Создать граф
                 </Button>
 
-                {/* 4. Вешаем открытие модалки на кнопку */}
                 <Button
                   size="lg"
-                  className="flex-1 py-7 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                  className="flex-1 py-7 text-lg font-medium bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm border-0"
                   onClick={() => setIsLoadModalOpen(true)}
                 >
-                  Загрузить свой граф
+                  Загрузить из библиотеки
                 </Button>
             </div>
           </div>
@@ -113,7 +187,6 @@ export default function HomeAuthenticated() {
               <div>
                 <h2 className="text-xl font-semibold text-zinc-900 mb-4">Выберите алгоритм</h2>
                 <RadioGroup value={selectedAlgorithm} onValueChange={setSelectedAlgorithm} className="space-y-5">
-                  {/* ... (радио-кнопки без изменений) ... */}
                   <div className="flex items-center space-x-4">
                     <RadioGroupItem value="dijkstra" id="dijkstra" className="w-6 h-6 border-zinc-400 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600" />
                     <Label htmlFor="dijkstra" className="cursor-pointer text-lg font-medium text-zinc-800">Дейкстры</Label>
@@ -131,7 +204,7 @@ export default function HomeAuthenticated() {
             </div>
 
             <Separator />
-            {/* ... (остальной UI без изменений) ... */}
+            
             <div className={`needs-overlay relative overflow-hidden ${isStarted ? 'active' : ''}`}>
               <div className="flex items-center space-x-4 pt-2">
                 <Checkbox id="shortest" checked={isShortestPath} onCheckedChange={(checked) => setIsShortestPath(!!checked)} className="w-6 h-6 border-zinc-400 data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600" />
@@ -141,11 +214,11 @@ export default function HomeAuthenticated() {
             <Separator />
 
             {isStarted ? (
-              <Button size="lg" variant="default" className="w-full gap-3 py-7 text-lg shadow-sm" onClick={handlePause}>
+              <Button size="lg" variant="default" className="w-full gap-3 py-7 text-lg shadow-sm border-0 bg-zinc-900" onClick={handlePause}>
                 <Pause className="w-6 h-6" /> Пауза
               </Button>
             ) : (
-              <Button size="lg" className="w-full gap-3 bg-emerald-600 hover:bg-emerald-700 text-white py-7 text-lg shadow-sm" onClick={handleStart}>
+              <Button size="lg" className="w-full gap-3 bg-emerald-600 hover:bg-emerald-700 text-white py-7 text-lg shadow-sm border-0" onClick={handleStart}>
                 <Play className="w-6 h-6" /> Старт
               </Button>
             )}
@@ -166,7 +239,7 @@ export default function HomeAuthenticated() {
 
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="   rounded-full bg-purple-100 border-4 border-purple-500 flex items-center justify-center overflow-hidden shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-purple-100 border-4 border-purple-500 flex items-center justify-center overflow-hidden shadow-sm">
                       <input type="text" value={finishVertex} onChange={(e) => setFinishVertex(e.target.value.toUpperCase())} maxLength={1} className="w-12 h-12 text-center text-3xl font-bold bg-transparent focus:outline-none text-purple-700 placeholder-purple-400" />
                     </div>
                   </div>
@@ -181,7 +254,6 @@ export default function HomeAuthenticated() {
         </div>
       </div>
 
-      {/* 5. Добавляем саму модалку в конец компонента */}
       <LoadGraphModal 
         isOpen={isLoadModalOpen}
         onClose={() => setIsLoadModalOpen(false)}

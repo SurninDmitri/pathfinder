@@ -1,12 +1,11 @@
-import { useState, useMemo } from "react"; // Добавил useMemo
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ArrowLeft, ArrowRightLeft, ArrowRight, X, User, AlertCircle } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-// --- НОВАЯ БИБЛИОТЕКА ---
 import ForceGraph2D from "react-force-graph-2d";
 
 type LinkType = "bidirectional" | "unidirectional" | "none";
@@ -21,12 +20,56 @@ interface Edge {
 
 export default function CreateGraph() {
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  const [graphId, setGraphId] = useState<number | null>(null);
   const [graphName, setGraphName] = useState("");
   const [edges, setEdges] = useState<Edge[]>([]);
   const [errors, setErrors] = useState<{ name?: string; global?: string }>({});
   const username = localStorage.getItem("username") || "Профиль";
 
-  // --- ПОДГОТОВКА ДАННЫХ ДЛЯ ГРАФА ---
+  // Загрузка данных при редактировании
+  useEffect(() => {
+    const data = location.state?.graphData;
+    if (data) {
+      setGraphId(data.id);
+      setGraphName(data.name);
+      
+      const loadedEdges: Edge[] = [];
+      const processedPairs = new Set<string>();
+
+      data.nodes.forEach((node: any) => {
+        if (node.neighbors) {
+          Object.entries(node.neighbors).forEach(([targetId, weight]) => {
+            const pairKey = [node.id, targetId].sort().join("-");
+            const reverseWeight = data.nodes.find((n: any) => n.id === targetId)?.neighbors?.[node.id];
+
+            if (reverseWeight !== undefined && !processedPairs.has(pairKey)) {
+              loadedEdges.push({
+                id: Math.random(),
+                from: node.id,
+                to: targetId,
+                weight: String(weight),
+                type: "bidirectional"
+              });
+              processedPairs.add(pairKey);
+            } 
+            else if (reverseWeight === undefined) {
+              loadedEdges.push({
+                id: Math.random(),
+                from: node.id,
+                to: targetId,
+                weight: String(weight),
+                type: "unidirectional"
+              });
+            }
+          });
+        }
+      });
+      setEdges(loadedEdges);
+    }
+  }, [location.state]);
+
   const graphData = useMemo(() => {
     const nodesSet = new Set<string>();
     const links: any[] = [];
@@ -35,15 +78,17 @@ export default function CreateGraph() {
       const from = edge.from.trim();
       const to = edge.to.trim();
 
+      // Добавляем узлы в любом случае, если поля не пустые
       if (from) nodesSet.add(from);
-      if (to && edge.type !== "none") nodesSet.add(to);
+      if (to) nodesSet.add(to); // Теперь D добавится, даже если тип связи "none"
 
+      // А вот саму линию (link) рисуем только если связь есть
       if (from && to && edge.type !== "none") {
         links.push({
           source: from,
           target: to,
           label: edge.weight,
-          curvature: edge.type === "bidirectional" ? 0.2 : 0, // Чтобы стрелки не накладывались
+          curvature: edge.type === "bidirectional" ? 0.2 : 0,
         });
       }
     });
@@ -122,8 +167,14 @@ export default function CreateGraph() {
     });
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/graph/", {
-        method: "POST",
+      const url = graphId 
+        ? `http://127.0.0.1:8000/api/graph/${graphId}/` 
+        : "http://127.0.0.1:8000/api/graph/";
+      
+      const method = graphId ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem("access")}`,
@@ -182,50 +233,41 @@ export default function CreateGraph() {
                   )}
                 />
                 {errors.name && (
-                  <span className="absolute -bottom-6 text-[11px] font-medium text-red-500 animate-in fade-in slide-in-from-top-1">
+                  <span className="absolute -bottom-6 text-[11px] font-medium text-red-500">
                     {errors.name}
                   </span>
                 )}
               </div>
-
             </CardHeader>
             
             <CardContent className="flex-1 p-0 bg-white relative">
-              {/* --- ВИЗУАЛИЗАЦИЯ --- */}
               {graphData.nodes.length > 0 ? (
                 <ForceGraph2D
                   graphData={graphData}
                   nodeLabel="id"
-                  nodeColor={() => "#2563eb"} // blue-600
-                   nodeCanvasObject={(node: any, ctx, globalScale) => {
+                  nodeCanvasObject={(node: any, ctx, globalScale) => {
                     const label = node.id;
                     const fontSize = 12 / globalScale;
-                    const radius = 12; // Твой размер
-
-                    // Рисуем круг (светло-серый)
+                    const radius = 12;
                     ctx.beginPath();
                     ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
-                    ctx.fillStyle = "#f4f4f5"; // zinc-100
+                    ctx.fillStyle = "#f4f4f5";
                     ctx.fill();
-
-                    // Рисуем обводку (чуть темнее)
                     ctx.lineWidth = 2 / globalScale;
-                    ctx.strokeStyle = "#d4d4d8"; // zinc-300
+                    ctx.strokeStyle = "#d4d4d8";
                     ctx.stroke();
-
-                    // Текст внутри круга
                     ctx.font = `bold ${fontSize}px Inter, sans-serif`;
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
-                    ctx.fillStyle = "#18181b"; // zinc-900
+                    ctx.fillStyle = "#18181b";
                     ctx.fillText(label, node.x, node.y);
                   }}
                   linkDirectionalArrowLength={6}
                   linkDirectionalArrowRelPos={1}
                   linkCurvature="curvature"
                   linkLabel="label"
-                  width={window.innerWidth - 400} // Вычитаем ширину сайдбара и отступы
-                  height={window.innerHeight - 150} // Вычитаем хедер и паддинги
+                  width={window.innerWidth - 420}
+                  height={window.innerHeight - 180}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center">
@@ -241,83 +283,83 @@ export default function CreateGraph() {
           <div className="flex flex-1 overflow-y-auto flex-col">
             <div className="flex flex-col gap-1 mb-8">
               <div className="text-[10px] font-bold text-zinc-600 tracking-[0.2em] uppercase">Список связей</div>
-              {edges.length === 0 && <div className="text-sm text-zinc-500 italic">Нажмите «Добавить» для создания связей</div>}
             </div>
             
             <div className="space-y-4">
               {edges.map((edge) => (
-                <div key={edge.id} className="flex items-center justify-center gap-4 group animate-in fade-in slide-in-from-right-4 duration-200">
-                <Input 
-                  value={edge.from}
-                  onChange={(e) => updateEdge(edge.id, "from", e.target.value.toUpperCase().slice(0, 1))}
-                  placeholder="A"
-                  className="w-11 h-11 rounded-full text-center font-bold text-base border-2 border-zinc-200 p-0 shadow-none flex-shrink-0"
-                />
-
-                <div className="flex flex-col items-center w-20 flex-shrink-0">
-                  <Popover>
-                    <PopoverTrigger className="w-full h-10 flex items-center justify-center border-b-2 border-zinc-100 hover:border-blue-400 transition-colors">
-                      {renderTypeIcon(edge.type)}
-                    </PopoverTrigger>
-                    <PopoverContent className="w-48 p-2 shadow-md border-zinc-200" side="bottom">
-                      <div className="flex flex-col gap-1">
-                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-xs shadow-none" onClick={() => updateEdge(edge.id, "type", "bidirectional")}>
-                          <ArrowRightLeft className="w-4 h-4 text-blue-500" /> Двунаправленный
-                        </Button>
-                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-xs shadow-none" onClick={() => updateEdge(edge.id, "type", "unidirectional")}>
-                          <ArrowRight className="w-4 h-4 text-blue-500" /> Однонаправленный
-                        </Button>
-                        <Button variant="ghost" size="sm" className="justify-start gap-2 text-xs text-red-500 shadow-none" onClick={() => updateEdge(edge.id, "type", "none")}>
-                          <X className="w-4 h-4" /> Нет связи
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  
-                  {edge.type !== "none" && (
-                    <input
-                      type="text"
-                      value={edge.weight}
-                      onChange={(e) => updateEdge(edge.id, "weight", e.target.value.replace(/[^0-9.]/g, ""))}
-                      className="w-full text-[14px] font-bold text-center text-zinc-900 bg-transparent border-none outline-none mt-2"
-                      placeholder="1.0"
-                    />
-                  )}
-                </div>
-
-                {edge.type !== "none" ? (
+                <div key={edge.id} className="flex items-center justify-center gap-4 group">
                   <Input 
-                    value={edge.to}
-                    onChange={(e) => updateEdge(edge.id, "to", e.target.value.toUpperCase().slice(0, 1))}
-                    placeholder="B"
-                    className="w-11 h-11 rounded-full text-center font-bold text-base border-2 border-zinc-200 p-0 shadow-none flex-shrink-0"
+                    value={edge.from}
+                    onChange={(e) => updateEdge(edge.id, "from", e.target.value.toUpperCase().slice(0, 1))}
+                    placeholder="A"
+                    className="w-11 h-11 rounded-full text-center font-bold border-2 p-0 shadow-none"
                   />
-                ) : (
-                  <div className="w-11 h-11 flex-shrink-0" />
-                )}
 
-                <div className="relative">
-                  <Button 
-                    variant="ghost" size="icon" 
-                    className="absolute left-2 -top-4 w-8 h-8 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                    onClick={() => removeEdge(edge.id)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+                  <div className="flex flex-col items-center w-20">
+                    <Popover>
+                      <PopoverTrigger className="w-full h-10 flex items-center justify-center border-b-2 border-zinc-100 hover:border-blue-400 transition-colors">
+                        {renderTypeIcon(edge.type)}
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-2 shadow-md border-zinc-200">
+                        <div className="flex flex-col gap-1">
+                          <Button variant="ghost" size="sm" className="justify-start gap-2 text-xs shadow-none" onClick={() => updateEdge(edge.id, "type", "bidirectional")}>
+                            <ArrowRightLeft className="w-4 h-4 text-blue-500" /> Двунаправленный
+                          </Button>
+                          <Button variant="ghost" size="sm" className="justify-start gap-2 text-xs shadow-none" onClick={() => updateEdge(edge.id, "type", "unidirectional")}>
+                            <ArrowRight className="w-4 h-4 text-blue-500" /> Однонаправленный
+                          </Button>
+                          <Button variant="ghost" size="sm" className="justify-start gap-2 text-xs text-red-500 shadow-none" onClick={() => updateEdge(edge.id, "type", "none")}>
+                            <X className="w-4 h-4" /> Нет связи
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    {edge.type !== "none" && (
+                      <input
+                        type="text"
+                        value={edge.weight}
+                        onChange={(e) => updateEdge(edge.id, "weight", e.target.value.replace(/[^0-9.]/g, ""))}
+                        className="w-full text-[14px] font-bold text-center mt-2 outline-none bg-transparent"
+                        placeholder="1.0"
+                      />
+                    )}
+                  </div>
+
+                  {edge.type !== "none" ? (
+                    <Input 
+                      value={edge.to}
+                      onChange={(e) => updateEdge(edge.id, "to", e.target.value.toUpperCase().slice(0, 1))}
+                      placeholder="B"
+                      className="w-11 h-11 rounded-full text-center font-bold border-2 p-0 shadow-none"
+                    />
+                  ) : (
+                    <div className="w-11 h-11" />
+                  )}
+
+                  <div className="relative w-8 h-8">
+                    <Button 
+                      variant="ghost" size="icon" 
+                      className="absolute left-0 top-0 w-8 h-8 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-none"
+                      onClick={() => removeEdge(edge.id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
               ))}
             </div>
           </div>
 
           <div className="space-y-4 mt-auto pt-6 bg-white">
             {errors.global && (
-              <div className="flex items-center gap-2 p-3 text-xs text-red-600 bg-red-50 rounded-xl animate-in fade-in">
+              <div className="flex items-center gap-2 p-3 text-xs text-red-600 bg-red-50 rounded-xl">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {errors.global}
               </div>
             )}
-            <Button size="lg" onClick={addEdge} className="w-full py-7 text-lg font-medium bg-blue-600 text-white rounded-2xl shadow-sm transition-all active:scale-95 border-0">Добавить</Button>
-            <Button size="lg" onClick={handleSave} className="w-full py-7 text-lg font-medium bg-emerald-600 text-white rounded-2xl shadow-md transition-all active:scale-95 border-0">Сохранить</Button>
+            <Button size="lg" onClick={addEdge} className="w-full py-7 text-lg font-medium bg-blue-600 text-white rounded-2xl border-0 shadow-none active:scale-95 transition-transform">Добавить</Button>
+            <Button size="lg" onClick={handleSave} className="w-full py-7 text-lg font-medium bg-emerald-600 text-white rounded-2xl border-0 shadow-none active:scale-95 transition-transform">
+              {graphId ? "Обновить" : "Сохранить"}
+            </Button>
           </div>
         </div>
       </div>

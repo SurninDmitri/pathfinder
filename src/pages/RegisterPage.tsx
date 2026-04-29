@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
+import { Header } from "@/components/ui/Header";
 
 export default function RegisterPage() {
   const [login, setLogin] = useState("");
@@ -12,7 +13,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const [isStarted, setIsStarted] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -66,27 +67,7 @@ export default function RegisterPage() {
 
   return (
     <div className="fixed inset-0 bg-zinc-50 flex flex-col overflow-hidden">
-      <header className="h-16 border-b border-zinc-200 bg-white px-8 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-2 -ml-4">
-          <img 
-            src="/graph.svg" 
-            alt="PathFinder" 
-            className="w-12 h-12 object-contain" 
-          />
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-            PathFinder
-          </h1>
-        </div>
-
-        <Button 
-          variant="default" 
-          size="lg" 
-          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0 h-10 px-4"
-          onClick={() => navigate("/login")}
-        >
-          Войти
-        </Button>
-      </header>
+      <Header isStarted={isStarted} />
 
       <div className="flex-1 flex items-center justify-center p-6">
         <Card className="w-full max-w-md border border-zinc-200 shadow-sm">

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Play, Pause } from "lucide-react";
 import { Header } from "@/components/ui/Header"; // Проверь, чтобы путь совпадал с файлом выше
+import { useNavigate } from "react-router-dom";
 
 export default function HomePage() {
   const [startVertex, setStartVertex] = useState("");
@@ -14,6 +15,8 @@ export default function HomePage() {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState("dijkstra");
   const [isShortestPath, setIsShortestPath] = useState(true);
   const [isStarted, setIsStarted] = useState(false);
+
+  const navigate = useNavigate();
 
   const handleStart = () => setIsStarted(true);
   const handlePause = () => setIsStarted(false);
@@ -42,7 +45,11 @@ export default function HomePage() {
 
           <div className={`needs-overlay relative overflow-hidden ${isStarted ? 'active' : ''}`}>
             <div className="mt-6 flex-shrink-0">
-              <Button size="lg" className="w-full py-7 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+              <Button 
+              size="lg" 
+              className="w-full py-7 text-lg font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+              onClick={() => navigate("/create")}
+              >
                 Создать граф
               </Button>
             </div>
