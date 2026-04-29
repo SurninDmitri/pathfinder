@@ -11,7 +11,6 @@ urlpatterns = [
 # users/ — создание пользователя (регистрация)
 # users/me/ — текущий пользователь
 # users/{id}/ — пользователь по id
-# users/confirm/ — подтверждение email
 # users/resend_activation/ — повторная отправка активации
 # users/set_password/ — смена пароля
 # users/reset_password/ — запрос на сброс пароля
