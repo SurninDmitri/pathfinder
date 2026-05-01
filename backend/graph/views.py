@@ -58,7 +58,7 @@ class GraphDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated, IsOnlyAuthor]
 
 
-@api_view(['GET'])
+@api_view(['POST'])
 def graph_run(request, pk:int):
     graph_model = get_object_or_404(Graph, pk=pk)
     serializer = RunAlgoritm(data=request.data)
@@ -66,7 +66,12 @@ def graph_run(request, pk:int):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     start = serializer.validated_data['start']
-    end   = serializer.validated_data['end']
+    end = serializer.validated_data['end']
+    algo_type = serializer.validated_data['algorithm']
+    need_shortest = serializer.validated_data['shortest_path']
     graph = graph_model.nodes
-    steps = BFS(graph, start, end)
+    if algo_type == 'BFS':
+        steps = BFS(json_object=graph, start=start, end=end)
+    else:
+        return Response({"error": "Алгоритм не поддерживается"}, status=400)
     return Response(steps, status=status.HTTP_200_OK)

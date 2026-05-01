@@ -48,12 +48,18 @@ class GraphSerializer(serializers.ModelSerializer):
         return graf
 
 class RunAlgoritm(serializers.Serializer):
+    ALGORITHM_CHOICES = [
+        ('BFS', 'Breadth First Search'),
+        ('DFS', 'Depth First Search'),
+        ('DIJKSTRA', 'Dijkstra Algorithm'),
+    ]
+
     start = serializers.CharField(required=True, allow_blank=False)
-    end   = serializers.CharField(required=True, allow_blank=False)
+    end = serializers.CharField(required=True, allow_blank=False)
+    algorithm = serializers.ChoiceField(choices=ALGORITHM_CHOICES, default='BFS')
+    shortest_path = serializers.BooleanField(default=False)
 
     def validate(self, data):
-        start = data.get('start')
-        end   = data.get('end')
-        if start == end:
-            raise serializers.ValidationError("start и end не могут быть одинаковыми")
+        if data.get('start') == data.get('end'):
+            raise serializers.ValidationError("Стартовая и конечная точки не могут совпадать.")
         return data
