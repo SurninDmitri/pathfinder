@@ -61,3 +61,57 @@ def BFS(json_object, start, end):
                 logger.log(queue=queue, visited=visited, current=current_node, path=path)
                 parent[node] = current_node
     return logger.steps
+
+
+a = [{
+        "id": "Q",
+        "x": 0,
+        "y": 0,
+        "neighbors": {
+            "D": 1,
+            "Z": 144
+        }
+    },
+    {
+        "id": "D",
+        "x": 0,
+        "y": 0,
+        "neighbors": {
+            "A": 1
+        }
+    },
+    {
+        "id": "Z",
+        "x": 0,
+        "y": 0,
+        "neighbors": {
+            "D": 1,
+            "S": 1
+        }
+    },
+    {
+        "id": "A",
+        "x": 0,
+        "y": 0,
+        "neighbors": {}
+    },
+    {
+        "id": "S",
+        "x": 0,
+        "y": 0,
+        "neighbors": {
+            "N": 1
+        }
+    },
+    {
+        "id": "N",
+        "x": 0,
+        "y": 0,
+        "neighbors": {
+            "A": 1
+        }
+    }]
+
+
+result = BFS(json_object=a, start="Q", end="N")
+print(len(result))

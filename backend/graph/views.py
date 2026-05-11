@@ -5,7 +5,7 @@ from rest_framework import status, generics
 
 from .permissions import IsOnlyAuthor
 from .utils import BFS
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from .serializers import GraphSerializer, RunAlgoritm
 from .models import Graph
 from django.shortcuts import get_object_or_404
@@ -13,7 +13,9 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+
 @api_view(['GET'])
+@permission_classes([permissions.AllowAny])
 def home_graph(request):
     graph = {
         'nodes': [
@@ -34,10 +36,9 @@ def home_graph(request):
     }
     return Response(response, status=status.HTTP_200_OK)
 
-class GraphCreateList(APIView):
-    permission_classes = [IsAuthenticated]
-        
+class GraphCreateList(APIView):    
     authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         graphs = Graph.objects.filter(author=request.user)
@@ -52,15 +53,19 @@ class GraphCreateList(APIView):
         
 
 class GraphDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Graph.objects.all()
     serializer_class = GraphSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticated, IsOnlyAuthor]
+    permission_classes = [IsAuthenticated, IsOnlyAuthor]
+
+    def get_queryset(self):
+        return Graph.objects.filter(author=self.request.user)
 
 
 @api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def graph_run(request, pk:int):
-    graph_model = get_object_or_404(Graph, pk=pk)
+    graph_model = get_object_or_404(Graph, pk=pk, author=request.user)
     serializer = RunAlgoritm(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
