@@ -14,27 +14,39 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
-@api_view(['GET'])
-@permission_classes([permissions.AllowAny])
-def home_graph(request):
-    graph = {
-        'nodes': [
-            {'id': 'a', 'x': 0, 'y': 50, 'neighbors': {'b':1, 'c':1}},
-            {'id': 'b', 'x': 10, 'y': 20, 'neighbors': {'c':1, 'f':1}},
-            {'id': 'c', 'x': 0, 'y': 50, 'neighbors': {'e':1}},
-            {'id': 'f', 'x': 0, 'y': 50, 'neighbors': {'e':1}},
-            {'id': 'e', 'x': 0, 'y': 50, 'neighbors': {}},
-        ],
-        'start_node':'a',
-        'end_node':'e',
-        'short_path':False
-    }
-    steps = BFS(graph['nodes'], graph['start_node'], graph['end_node'])
+class HomeGraph(APIView):
     
-    response = {
-        "steps": steps,
+    permission_classes = [permissions.AllowAny]
+    STATIC_GRAPH = {
+        'nodes': [
+            {'id': 'A', 'x': 50, 'y': 50, 'neighbors': {'B': 1, 'C': 1}},
+            {'id': 'B', 'x': 150, 'y': 20, 'neighbors': {'C': 1, 'F': 1}},
+            {'id': 'C', 'x': 100, 'y': 150, 'neighbors': {'E': 1}},
+            {'id': 'F', 'x': 250, 'y': 50, 'neighbors': {'E': 1}},
+            {'id': 'E', 'x': 200, 'y': 250, 'neighbors': {}},
+        ],
+        'start_node': 'A',
+        'end_node': 'E',
     }
-    return Response(response, status=status.HTTP_200_OK)
+
+    def get(self, request):
+        return Response(self.STATIC_GRAPH, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = RunAlgoritm(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        start = serializer.validated_data['start'].upper()
+        end = serializer.validated_data['end'].upper()
+        algo_type = serializer.validated_data['algorithm']
+        need_shortest = serializer.validated_data['shortest_path']
+        graph = self.STATIC_GRAPH['nodes']
+        if algo_type == 'BFS':
+            steps = BFS(json_object=graph, start=start, end=end)
+        else:
+            return Response({"error": "Алгоритм не поддерживается"}, status=400)
+        return Response(steps, status=status.HTTP_200_OK)
 
 class GraphCreateList(APIView):    
     authentication_classes = [JWTAuthentication]

@@ -63,55 +63,16 @@ def BFS(json_object, start, end):
     return logger.steps
 
 
-a = [{
-        "id": "Q",
-        "x": 0,
-        "y": 0,
-        "neighbors": {
-            "D": 1,
-            "Z": 144
-        }
-    },
-    {
-        "id": "D",
-        "x": 0,
-        "y": 0,
-        "neighbors": {
-            "A": 1
-        }
-    },
-    {
-        "id": "Z",
-        "x": 0,
-        "y": 0,
-        "neighbors": {
-            "D": 1,
-            "S": 1
-        }
-    },
-    {
-        "id": "A",
-        "x": 0,
-        "y": 0,
-        "neighbors": {}
-    },
-    {
-        "id": "S",
-        "x": 0,
-        "y": 0,
-        "neighbors": {
-            "N": 1
-        }
-    },
-    {
-        "id": "N",
-        "x": 0,
-        "y": 0,
-        "neighbors": {
-            "A": 1
-        }
-    }]
+STATIC_GRAPH = {
+        'nodes': [
+            {'id': 'A', 'x': 50, 'y': 50, 'neighbors': {'B': 1, 'C': 1}},
+            {'id': 'B', 'x': 150, 'y': 20, 'neighbors': {'C': 1, 'F': 1}},
+            {'id': 'C', 'x': 100, 'y': 150, 'neighbors': {'E': 1}},
+            {'id': 'F', 'x': 250, 'y': 50, 'neighbors': {'E': 1}},
+            {'id': 'E', 'x': 200, 'y': 250, 'neighbors': {}},
+        ],
+        'start_node': 'A',
+        'end_node': 'E',
+    }
 
-
-result = BFS(json_object=a, start="Q", end="N")
-print(len(result))
+print(BFS(STATIC_GRAPH['nodes'], STATIC_GRAPH['start_node'], STATIC_GRAPH['end_node']))

@@ -3,9 +3,6 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from .models import Graph
 
 
-
-
-
 class NodeSerializer(serializers.Serializer):
     id = serializers.CharField(required=True, min_length=1, allow_blank=False)
     x = serializers.FloatField(
